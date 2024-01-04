@@ -13,12 +13,10 @@ def index():
 @app.route('/message', methods=['GET', 'POST'])
 def message():
     if request.method == 'POST':
-        # Отримати дані з форми
         data = {
             'username': request.form['username'],
             'message': request.form['message']
         }
-        # Відправити дані на сокет-сервер
         send_to_socket(data)
     return render_template('message.html')
 

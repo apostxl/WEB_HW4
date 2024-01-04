@@ -1,0 +1,51 @@
+from flask import Flask, render_template, request
+import socket
+import json
+from datetime import datetime
+from threading import Thread
+
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/message', methods=['GET', 'POST'])
+def message():
+    if request.method == 'POST':
+        # Отримати дані з форми
+        data = {
+            'username': request.form['username'],
+            'message': request.form['message']
+        }
+        # Відправити дані на сокет-сервер
+        send_to_socket(data)
+    return render_template('message.html')
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('error.html'), 404
+
+def save_to_json(data):
+    with open('storage/data.json', 'a') as file:
+        json.dump(data, file)
+
+def send_to_socket(data):
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.sendto(json.dumps(data).encode(), ('127.0.0.1', 5000))
+
+def socket_server():
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.bind(('127.0.0.1', 5000))
+        while True:
+            data, addr = s.recvfrom(1024)
+            received_data = json.loads(data.decode())
+            received_data['timestamp'] = str(datetime.now())
+            save_to_json(received_data)
+
+if __name__ == '__main__':
+    http_thread = Thread(target=app.run, kwargs={'port': 3000})
+    socket_thread = Thread(target=socket_server)
+
+    http_thread.start()
+    socket_thread.start()
